@@ -1,5 +1,5 @@
 # Old Files
 Spring\ 2018/
 
-# Experimental MATLAB Code
-matlab-interface/
+# MATLAB GUI Code
+matlab-interface/*.mlapp
