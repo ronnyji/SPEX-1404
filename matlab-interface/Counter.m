@@ -49,8 +49,8 @@ classdef Counter < handle
 
         function success = setIntegrationTime(obj,time)
             obj.integrationTime = time;
-            [M,N] = Driver.extractComponent(time);
-            command = strcat('SET_COUNT_PRESET ',num2str(M),',',num2str(N));
+            [M,N] = Counter.getScientificNotation(time);
+            command = strcat('SET_COUNT_PRESET',num2str(M),',',num2str(N));
             status = obj.sendCommand(command);
             if Counter.verifyChecksum(status) && Counter.verifyExecution(status)
                 command = 'SET_MODE_SECONDS';
@@ -68,7 +68,7 @@ classdef Counter < handle
         end
 
         function success = clearCounter(obj,index)
-            command = strcat('CLEAR_COUNTERS ',Counter.getIndividualMask(index));
+            command = strcat('CLEAR_COUNTERS',32,Counter.getIndividualMask(index));
             status = obj.sendCommand(command);
             success = Counter.verifyChecksum(status) && Counter.verifyExecution(status);
         end
@@ -86,7 +86,7 @@ classdef Counter < handle
         end
 
         function [success,count] = getCounter(obj,index)
-            command = strcat('SHOW_COUNTS ',Counter.getIndividualMask(index));
+            command = strcat('SHOW_COUNTS',32,Counter.getIndividualMask(index));
             [status,reply] = obj.sendQuery(command);
             if Counter.verifyChecksum(status) && Counter.verifyExecution(status)
                 success = true;
@@ -122,6 +122,7 @@ classdef Counter < handle
         end
 
         function valid = verifyChecksum(command)
+            command = strip(command);
             checksum = Counter.calculateChecksum(command(1:end-3));
             valid = checksum == str2double(command(end-2:end));
         end
