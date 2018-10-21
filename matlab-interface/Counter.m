@@ -33,16 +33,33 @@ classdef Counter < handle
         function status = sendCommand(obj,command)
             fprintf(obj.counter,command);
             status = fscanf(obj.counter);
+            status = strip(status);
         end
 
         function [status,reply] = sendQuery(obj,command)
             fprintf(obj.counter,command);
             reply = fscanf(obj.counter);
+            reply = strip(reply);
             status = fscanf(obj.counter);
+            status = strip(status);
         end
 
-        function success = setRemote(obj)
-            command = 'ENABLE_REMOTE';
+        function success = setRemote(obj,enable)
+            if enable
+                command = 'ENABLE_REMOTE';
+            else
+                command = 'ENABLE_LOCAL';
+            end
+            status = obj.sendCommand(command);
+            success = Counter.verifyChecksum(status) && Counter.verifyExecution(status);
+        end
+
+        function success = setAlarm(obj,enable)
+            if enable
+                command = 'ENABLE_ALARM';
+            else
+                command = 'DISABLE_ALARM';
+            end
             status = obj.sendCommand(command);
             success = Counter.verifyChecksum(status) && Counter.verifyExecution(status);
         end
@@ -50,7 +67,7 @@ classdef Counter < handle
         function success = setIntegrationTime(obj,time)
             obj.integrationTime = time;
             [M,N] = Counter.getScientificNotation(time);
-            command = strcat('SET_COUNT_PRESET',num2str(M),',',num2str(N));
+            command = strcat('SET_COUNT_PRESET',32,num2str(M),',',num2str(N));
             status = obj.sendCommand(command);
             if Counter.verifyChecksum(status) && Counter.verifyExecution(status)
                 command = 'SET_MODE_SECONDS';
@@ -90,7 +107,7 @@ classdef Counter < handle
             [status,reply] = obj.sendQuery(command);
             if Counter.verifyChecksum(status) && Counter.verifyExecution(status)
                 success = true;
-                count = str2double(reply);
+                count = str2double(reply(1:8));
             else
                 success = false;
                 count = -1;
@@ -122,7 +139,6 @@ classdef Counter < handle
         end
 
         function valid = verifyChecksum(command)
-            command = strip(command);
             checksum = Counter.calculateChecksum(command(1:end-3));
             valid = checksum == str2double(command(end-2:end));
         end
