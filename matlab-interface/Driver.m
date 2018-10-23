@@ -9,7 +9,7 @@ classdef Driver < handle
     properties (Constant)
         startMarker = '<'
         endMarker = '>'
-        CAN = char(30)
+        CAN = char(24)
         ACK = char(6)
     end
 
@@ -31,7 +31,7 @@ classdef Driver < handle
         end
 
         function createInterface(obj)
-            obj.driver = serial(obj.comPort,'BaudRate',obj.baudRate);
+            obj.driver = serial(obj.comPort,'BaudRate',obj.baudRate,'Timeout',3600);
             fopen(obj.driver);
         end
 
@@ -42,6 +42,13 @@ classdef Driver < handle
         function reply = sendCommand(obj,command)
             fprintf(obj.driver,command);
             reply = fscanf(obj.driver);
+            reply = strip(reply);
+        end
+
+        function success = verifyReady(obj)
+            reply = fscanf(obj.driver);
+            reply = strip(reply);
+            success = Driver.verifyMode(reply);
         end
 
         function success = setRemote(obj)
@@ -51,31 +58,28 @@ classdef Driver < handle
         end
 
         function success = backlashAdjustment(obj)
-            command = Driver.getCommandConstantSpeed(true,40000,400);
+            command = Driver.getCommandBacklashAdjustment();
             reply = obj.sendCommand(command);
             success = Driver.verifyReply(reply);
-            if success
-                command = Driver.getCommandConstantSpeed(false,40000,400);
-                reply = obj.sendCommand(command);
-                success = Driver.verifyReply(reply);
-            end
         end
 
-        function success = moveTo(obj,position,constantSpeed)
+        function success = moveTo(obj,position,constantSpeed,period)
             if nargin == 2
                 constantSpeed = false;
+            elseif nargin == 3
+                period = 400;
             end
             if obj.currentPosition == position
                 success = false;
             else
-                num_steps = abs(position - obj.currentPosition);
+                num_steps = abs(position - obj.currentPosition) * 400;
                 if obj.currentPosition < position
                     reverse = false;
                 elseif obj.currentPosition > position
                     reverse = true;
                 end
                 if constantSpeed
-                    command = Driver.getCommandConstantSpeed(reverse,num_steps,400);
+                    command = Driver.getCommandConstantSpeed(reverse,num_steps,period);
                 else
                     command = Driver.getCommandVariableSpeed(reverse,num_steps);
                 end
@@ -90,6 +94,12 @@ classdef Driver < handle
         function command = getCommandSetRemote()
             command = strcat(Driver.startMarker,Driver.CAN);
             command = strcat(command,',r');
+            command = strcat(command,Driver.endMarker);
+        end
+
+        function command = getCommandBacklashAdjustment()
+            command = strcat(Driver.startMarker,Driver.CAN);
+            command = strcat(command,',b');
             command = strcat(command,Driver.endMarker);
         end
 
@@ -116,6 +126,18 @@ classdef Driver < handle
             command = strcat(command,num2str(numStep),',');
             command = strcat(command,num2str(period));
             command = strcat(command,Driver.endMarker);
+        end
+
+        function valid = verifyMode(reply)
+            % switch reply(12:22)
+            %     case 'Normal Mode'
+            %         valid = true;
+            %     case 'Debug Mode '
+            %         error('Unsupported Driver Mode: Debug');
+            %     otherwise
+            %         error('Unknown Driver Mode');
+            % end
+            valid = strcmp(reply(12:22),'Normal Mode');
         end
 
         function valid = verifyReply(reply)

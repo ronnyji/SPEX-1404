@@ -44,6 +44,12 @@ classdef Counter < handle
             status = strip(status);
         end
 
+        function success = verifyReady(obj)
+            reply = fscanf(obj.counter);
+            reply = strip(reply);
+            success = Counter.verifyPowerUp(reply) && Counter.verifyChecksum(reply);
+        end
+
         function success = setRemote(obj,enable)
             if enable
                 command = 'ENABLE_REMOTE';
@@ -143,16 +149,24 @@ classdef Counter < handle
             valid = checksum == str2double(command(end-2:end));
         end
 
-        function success = verifyExecution(reply)
+        function success = verifyPowerUp(reply)
             % switch reply(2:7)
-            %     case '000000'
-            %         success = true;
             %     case '001000'
-            %         error('Power-up Just Occurred');
+            %         success = true;
             %     case '004002'
             %         error('Power-up Self-Test Failure - ROM Test Failed');
             %     case '004008'
             %         error('Power-up Self-Test Failure - Scratchpad RAM Failed');
+            %     otherwise
+            %         error('Unknown Power-up Status');
+            % end
+            success = strcmp(reply(2:7),'001000');
+        end
+
+        function success = verifyExecution(reply)
+            % switch reply(2:7)
+            %     case '000000'
+            %         success = true;
             %     case '129001'
             %         error('Command Syntax Error - Invalid Verb');
             %     case '129002'
@@ -204,7 +218,7 @@ classdef Counter < handle
             %     case '131136'
             %         error('Execution Error - Start/Stop Trigger Must Be Disabled');
             %     otherwise
-            %         error('More Than One Error Occurred');
+            %         error('Multiple Errors or Unknown Error');
             % end
             success = strcmp(reply(2:7),'000000');
         end

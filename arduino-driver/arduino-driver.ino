@@ -32,6 +32,7 @@ const char startMarker = '<';
 const char endMarker = '>';
 const char CAN = '\030';
 const char ACK = '\006';
+const char NAK = '\025';
 
 // Store received characters
 const int maxNumChars = 16;
@@ -117,6 +118,10 @@ void loop() {
     if (validMessage) {
       executeMessage();
       validMessage = false;
+    } else {
+      Serial.print(startMarker);
+      Serial.print(NAK);
+      Serial.println(endMarker);
     }
     newMessage = false;
   }
@@ -167,7 +172,7 @@ void clearSerialInputBuffer() {
   Determine if the received message is legit
 */
 void validateMessage() {
-  if (receivedChars[0] == CAN && receivedChars[1] == ',' && (receivedChars[2] == 'r' || receivedChars[2] == 'a' || receivedChars[2] == 'c')) {
+  if (receivedChars[0] == CAN && receivedChars[1] == ',' && (receivedChars[2] == 'r' || receivedChars[2] == 'b' || receivedChars[2] == 'a' || receivedChars[2] == 'c')) {
     int count = 0;
     for (int i = 0; i < maxNumChars; i++) {
       if (receivedChars[i] == ',') {
@@ -176,6 +181,9 @@ void validateMessage() {
     }
     if (receivedChars[2] == 'r' && count == 1) {
       // <CAN,r>
+      validMessage = true;
+    } else if (receivedChars[2] == 'b' && count == 1) {
+      // <CAN,b>
       validMessage = true;
     } else if (receivedChars[2] == 'a' && count == 3 && (receivedChars[4] == '0' || receivedChars[4] == '1') && (receivedChars[6] >= '0' && receivedChars[6] <= '9')) {
       // <CAN,a,0,numStep>
@@ -198,16 +206,23 @@ void validateMessage() {
 void executeMessage() {
   if (receivedChars[2] == 'r') {
     // <CAN,r>
-    // May need to check a few things before return ACK
-    // Such as 12V is turned on, etc.
     #if DEBUG == 1
       Serial.print("Mode: ");
-      Serial.println("initialization");
+      Serial.println("remote");
+    #endif
+    Serial.print(startMarker);
+    Serial.print(ACK);
+    Serial.println(endMarker);
+  } else if (receivedChars[2] == 'b') {
+    // <CAN,b>
+    #if DEBUG == 1
+      Serial.print("Mode: ");
+      Serial.println("backlash adjustment");
     #endif
     receivedChars[4] = '1';
-    generateStepPulse(40000, 400);
+    generateStepPulse(40000L, 400);
     receivedChars[4] = '0';
-    generateStepPulse(40000, 400);
+    generateStepPulse(40000L, 400);
     Serial.print(startMarker);
     Serial.print(ACK);
     Serial.println(endMarker);
