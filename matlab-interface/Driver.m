@@ -6,7 +6,7 @@ classdef Driver < handle
         driver
     end
 
-    properties (Constant)
+    properties (Access = private,Constant)
         startMarker = '<'
         endMarker = '>'
         CAN = char(24)

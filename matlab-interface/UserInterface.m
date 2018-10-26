@@ -1,5 +1,6 @@
 classdef UserInterface < handle
     properties (Access = private)
+        photoluminescence
         BaseUI
         TabGroup
         InstrumentSetupTab
@@ -66,6 +67,10 @@ classdef UserInterface < handle
         PlotScaleLabel
         PlotScale
         Plot
+    end
+
+    properties (Access = private,Constant)
+        ANG = char(197)
     end
 
     methods (Access = private)
@@ -160,7 +165,7 @@ classdef UserInterface < handle
 
             obj.DriverStatus = uilamp(obj.InstrumentSetupTab);
             obj.DriverStatus.Position = [0.1*obj.BaseUI.Position(3)+300 0.4*obj.BaseUI.Position(4) 20 20];
-            obj.DriverStatus.Enable = 'off';
+            obj.DriverStatus.Color = 'red';
 
             obj.TurnOnDriver12V = uicheckbox(obj.InstrumentSetupTab);
             obj.TurnOnDriver12V.Position = [0.1*obj.BaseUI.Position(3) 0.36*obj.BaseUI.Position(4) 600 22];
@@ -211,7 +216,7 @@ classdef UserInterface < handle
 
             obj.CounterStatus = uilamp(obj.InstrumentSetupTab);
             obj.CounterStatus.Position = [0.1*obj.BaseUI.Position(3)+300 0.12*obj.BaseUI.Position(4) 20 20];
-            obj.CounterStatus.Enable = 'off';
+            obj.CounterStatus.Color = 'red';
 
             obj.EnterWavelengthLabel = uilabel(obj.InstrumentSetupTab);
             obj.EnterWavelengthLabel.Position = [0.08*obj.BaseUI.Position(3) 0.08*obj.BaseUI.Position(4) 600 25];
@@ -220,6 +225,7 @@ classdef UserInterface < handle
             obj.EnterWavelength = uieditfield(obj.InstrumentSetupTab, 'numeric');
             obj.EnterWavelength.Position = [0.08*obj.BaseUI.Position(3)+360 0.08*obj.BaseUI.Position(4) 100 22];
             obj.EnterWavelength.Limits = [0 10000];
+            obj.EnterWavelength.ValueChangedFcn = @obj.EnterWavelengthClick;
 
             obj.ScanSetupTab = uitab(obj.TabGroup);
             obj.ScanSetupTab.Title = 'Scan Setup';
@@ -228,7 +234,7 @@ classdef UserInterface < handle
 
             obj.StartWavelengthLabel = uilabel(obj.ScanSetupTab);
             obj.StartWavelengthLabel.Position = [0.1*obj.BaseUI.Position(3) 0.85*obj.BaseUI.Position(4) 150 22];
-            obj.StartWavelengthLabel.Text = 'Start Wavelength';
+            obj.StartWavelengthLabel.Text = strcat('Start Wavelength (',UserInterface.ANG,')');
 
             obj.StartWavelength = uieditfield(obj.ScanSetupTab,'numeric');
             obj.StartWavelength.Position = [0.1*obj.BaseUI.Position(3)+150 0.85*obj.BaseUI.Position(4) 75 22];
@@ -236,7 +242,7 @@ classdef UserInterface < handle
 
             obj.EndWavelengthLabel = uilabel(obj.ScanSetupTab);
             obj.EndWavelengthLabel.Position = [0.1*obj.BaseUI.Position(3)+350 0.85*obj.BaseUI.Position(4) 150 22];
-            obj.EndWavelengthLabel.Text = 'End Wavelength';
+            obj.EndWavelengthLabel.Text = strcat('End Wavelength (',UserInterface.ANG,')');
 
             obj.EndWavelength = uieditfield(obj.ScanSetupTab,'numeric');
             obj.EndWavelength.Position = [0.1*obj.BaseUI.Position(3)+500 0.85*obj.BaseUI.Position(4) 75 22];
@@ -244,7 +250,7 @@ classdef UserInterface < handle
 
             obj.WavelengthIncrementLabel = uilabel(obj.ScanSetupTab);
             obj.WavelengthIncrementLabel.Position = [0.1*obj.BaseUI.Position(3) 0.8*obj.BaseUI.Position(4) 150 22];
-            obj.WavelengthIncrementLabel.Text = 'Wavelength Increment';
+            obj.WavelengthIncrementLabel.Text = strcat('Wavelength Increment (',UserInterface.ANG,')');
 
             obj.WavelengthIncrement = uieditfield(obj.ScanSetupTab,'numeric');
             obj.WavelengthIncrement.Position = [0.1*obj.BaseUI.Position(3)+150 0.8*obj.BaseUI.Position(4) 75 22];
@@ -252,7 +258,7 @@ classdef UserInterface < handle
 
             obj.IntegrationTimeLabel = uilabel(obj.ScanSetupTab);
             obj.IntegrationTimeLabel.Position = [0.1*obj.BaseUI.Position(3)+350 0.8*obj.BaseUI.Position(4) 150 22];
-            obj.IntegrationTimeLabel.Text = 'IntegrationTime';
+            obj.IntegrationTimeLabel.Text = 'IntegrationTime (s)';
 
             obj.IntegrationTime = uieditfield(obj.ScanSetupTab,'numeric');
             obj.IntegrationTime.Position = [0.1*obj.BaseUI.Position(3)+500 0.8*obj.BaseUI.Position(4) 75 22];
@@ -349,7 +355,7 @@ classdef UserInterface < handle
             obj.Plot.Position = [20 20 obj.BaseUI.Position(3)-40 obj.BaseUI.Position(4)-100];
             obj.Plot.Box = 'on';
             title(obj.Plot,'Result');
-            xlabel(obj.Plot,'Wavelength');
+            xlabel(obj.Plot,strcat('Wavelength (',UserInterface.ANG,')'));
             ylabel(obj.Plot,'Photon Count');
         end
 
@@ -481,20 +487,34 @@ classdef UserInterface < handle
 
         function ConnectDriverClick(obj,src,event)
             if obj.ConfirmPowerDown.Value && obj.ConfirmConnections.Value && obj.ConfirmDriver5VOn.Value && obj.ConfirmDriverCOM.Value
-                obj.DriverStatus.Enable = 'on';
+                if obj.photoluminescence.connectDriver(obj.DriverCOM.Value,obj.DriverBaud.Value)
+                    obj.DriverStatus.Color = 'green';
+                end
             end
         end
 
         function BacklashAdjustmentClick(obj,src,event)
-            if strcmp(obj.DriverStatus.Enable,'on') && obj.TurnOnDriver12V.Value
-                obj.DriverInitialization.Value = true;
+            if strcmp(obj.DriverStatus.Color,'green') && obj.TurnOnDriver12V.Value
+                if obj.photoluminescence.backlashAdjustment()
+                    obj.DriverInitialization.Value = true;
+                end
             end
         end
 
         function ConnectCounterClick(obj,src,event)
             if obj.ConfirmPowerDown.Value && obj.ConfirmConnections.Value && obj.DriverInitialization.Value && obj.TurnOnCounter.Value && obj.ConfirmCounterAddress.Value
-                obj.CounterStatus.Enable = 'on';
-                obj.CounterInitialization.Value = true;
+                if obj.photoluminescence.ConnectCounter(obj.CounterBoardIndex.Value,obj.CounterPrimaryAddress.Value)
+                    obj.CounterStatus.Color = 'green';
+                    obj.CounterInitialization.Value = true;
+                end
+            end
+        end
+
+        function EnterWavelengthClick(obj,src,event)
+            if obj.ConfirmPowerDown.Value && obj.ConfirmConnections.Value && obj.DriverInitialization.Value && obj.CounterInitialization.Value
+                obj.photoluminescence.setInitialPosition(obj.EnterWavelength.Value);
+            else
+                errordlg('Entering wavelength requires all items in the checklist to be completed.','Checklist Incomplete');
             end
         end
 
@@ -504,6 +524,20 @@ classdef UserInterface < handle
         end
 
         function StartScanClick(obj,src,event)
+            scanParameters.startWavelength = obj.StartWavelength.Value;
+            scanParameters.endWavelength = obj.EndWavelength.Value;
+            scanParameters.wavelengthIncrement = obj.WavelengthIncrement.Value;
+            scanParameters.integrationTime = obj.IntegrationTime.Value;
+            scanParameters.sampleID = obj.SampleID.Value;
+            scanParameters.sampleTemperature = obj.SampleTemperature.Value;
+            scanParameters.attenuation = obj.Attenuation.Value;
+            scanParameters.magnification = obj.Magnification.Value;
+            scanParameters.laserPower = obj.LaserPower.Value;
+            scanParameters.slitWidth = obj.SlitWidth.Value;
+            scanParameters.additionalNotes = char(obj.AdditionalNotes.Value);
+            scanParameters.fileName = obj.FileLocation.Value;
+            result = obj.photoluminescence.scan(scanParameters,obj.Plot);
+            Photoluminescence.saveResult(scanParameters,result);
         end
 
         function StopScanClick(obj,src,event)
@@ -522,6 +556,7 @@ classdef UserInterface < handle
     methods (Access = public)
         function obj = UserInterface()
             obj.createInterface();
+            obj.photoluminescence = Photoluminescence();
         end
     end
 end
