@@ -55,7 +55,7 @@ classdef Photoluminescence < handle
     end
 
     methods (Static)
-        function saveResult(scanParameters,result)
+        function saveScan(scanParameters,result)
             file = fopen(scanParameters.fileName,'a');
             fprintf(file,'Sample ID,%s\n',scanParameters.sampleID);
             fprintf(file,'Start Wavelength,%.2f\n',scanParameters.startWavelength);
@@ -69,6 +69,7 @@ classdef Photoluminescence < handle
             fprintf(file,'Slit Width,%s\n',scanParameters.slitWidth);
             fprintf(file,'Additional Notes,%s\n',scanParameters.additionalNotes);
             fprintf(file,'\n');
+            fprintf(file,'----------START OF SCAN RESULT----------\n');
             fprintf(file,'Wavelength,Photon Counts\n');
             for i = 1:length(result)
                 fprintf(file,'%.2f,%d\n',result(i,1),result(i,2));
@@ -76,7 +77,98 @@ classdef Photoluminescence < handle
             fclose(file);
         end
 
-        function plot()
+        function [scanParameters,result] = loadScan(fileName)
+            scanParameters.fileName = fileName;
+            file = fopen(fileName,'r');
+            tline = fgetl(file);
+            lineNum = 0;
+            while ischar(tline) && ~strcmp(tline,'----------START OF SCAN RESULT----------')
+                words = strsplit(tline,',');
+                field = char(words(1));
+                if length(words) > 1
+                    value = char(words(2));
+                end
+                switch field
+                    case 'Sample ID'
+                        scanParameters.sampleID = value;
+                    case 'Start Wavelength'
+                        scanParameters.startWavelength = str2double(value);
+                    case 'End Wavelength'
+                        scanParameters.endWavelength = str2double(value);
+                    case 'Wavelength Increment'
+                        scanParameters.wavelengthIncrement = str2double(value);
+                    case 'Integration Time'
+                        scanParameters.integrationTime = str2double(value);
+                    case 'Sample Temperature'
+                        scanParameters.sampleTemperature = value;
+                    case 'Attenuation'
+                        scanParameters.attenuation = value;
+                    case 'Magnification'
+                        scanParameters.magnification = value;
+                    case 'Laser Power'
+                        scanParameters.laserPower = value;
+                    case 'Slit Width'
+                        scanParameters.slitWidth = value;
+                    case 'Additional Notes'
+                        scanParameters.additionalNotes = value;
+                end
+                lineNum = lineNum + 1;
+                tline = fgetl(file);
+            end
+            fclose(file);
+            result = csvread(fileName,lineNum+2,0);
+        end
+
+        function [scanParameters,result] = loadOldScan(fileName)
+            scanParameters.fileName = fileName;
+            file = fopen(fileName,'r');
+            tline = fgetl(file);
+            lineNum = 0;
+            while ischar(tline) && ~strcmp(tline,'Wavelength  |  Photon Counts  |   Klinger Setting')
+                words = strsplit(tline,':');
+                field = char(words(1));
+                if length(words) > 1
+                    value = strip(char(words(2)));
+                end
+                switch field
+                    case 'Sample ID'
+                        scanParameters.sampleID = value;
+                    case 'Starting Wavelength'
+                        scanParameters.startWavelength = str2double(value);
+                    case 'Ending Wavelength'
+                        scanParameters.endWavelength = str2double(value);
+                    case 'Wavelength Increment'
+                        scanParameters.wavelengthIncrement = str2double(value);
+                    case 'Integration Time'
+                        scanParameters.integrationTime = str2double(value);
+                    case 'Sample Temperature'
+                        scanParameters.sampleTemperature = value;
+                    case 'Attenuation'
+                        scanParameters.attenuation = value;
+                    case 'Magnification'
+                        scanParameters.magnification = value;
+                    case 'Laser Power'
+                        scanParameters.laserPower = value;
+                    case 'Slit Width'
+                        scanParameters.slitWidth = value;
+                    case 'Notes'
+                        scanParameters.additionalNotes = value;
+                end
+                lineNum = lineNum + 1;
+                tline = fgetl(file);
+            end
+            fclose(file);
+            result = dlmread(fileName,' ',lineNum+2,0);
+            result(:,3) = [];
+        end
+
+        function convertOldScan(oldFileName,newFileName)
+            [scanParameters,result] = Photoluminescence.loadOldScan(oldFileName);
+            scanParameters.fileName = newFileName;
+            Photoluminescence.saveScan(scanParameters,result);
+        end
+
+        function plot(scanParameters,result)
         end
     end
 end

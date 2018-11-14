@@ -538,10 +538,10 @@ classdef UserInterface < handle
             scanParameters.magnification = obj.Magnification.Value;
             scanParameters.laserPower = obj.LaserPower.Value;
             scanParameters.slitWidth = obj.SlitWidth.Value;
-            scanParameters.additionalNotes = char(obj.AdditionalNotes.Value);
+            scanParameters.additionalNotes = char(join(obj.AdditionalNotes.Value,'\n'));
             scanParameters.fileName = obj.FileLocation.Value;
             result = obj.photoluminescence.scan(scanParameters,obj.Plot);
-            Photoluminescence.saveResult(scanParameters,result);
+            Photoluminescence.saveScan(scanParameters,result);
         end
 
         function StopScanClick(obj,src,event)
