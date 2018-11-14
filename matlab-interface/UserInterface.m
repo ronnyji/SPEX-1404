@@ -143,7 +143,11 @@ classdef UserInterface < handle
 
             obj.DriverCOM = uidropdown(obj.InstrumentSetupTab);
             obj.DriverCOM.Position = [0.12*obj.BaseUI.Position(3)+100 0.44*obj.BaseUI.Position(4) 75 22];
-            obj.DriverCOM.Items = seriallist;
+            if length(seriallist) == 0
+                obj.DriverCOM.Items = {'COM1','COM2','COM3','COM4','COM5','COM6','COM7','COM8','COM9','COM10'};
+            else
+                obj.DriverCOM.Items = seriallist;
+            end
 
             obj.DriverBaudLabel = uilabel(obj.InstrumentSetupTab);
             obj.DriverBaudLabel.Position = [0.12*obj.BaseUI.Position(3)+250 0.44*obj.BaseUI.Position(4) 100 22];
@@ -487,14 +491,14 @@ classdef UserInterface < handle
 
         function ConnectDriverClick(obj,src,event)
             if obj.ConfirmPowerDown.Value && obj.ConfirmConnections.Value && obj.ConfirmDriver5VOn.Value && obj.ConfirmDriverCOM.Value
-                if obj.photoluminescence.connectDriver(obj.DriverCOM.Value,obj.DriverBaud.Value)
+                if obj.photoluminescence.connectDriver(obj.DriverCOM.Value,str2double(obj.DriverBaud.Value))
                     obj.DriverStatus.Color = 'green';
                 end
             end
         end
 
         function BacklashAdjustmentClick(obj,src,event)
-            if strcmp(obj.DriverStatus.Color,'green') && obj.TurnOnDriver12V.Value
+            if all(eq(obj.DriverStatus.Color,[0,1,0])) && obj.TurnOnDriver12V.Value
                 if obj.photoluminescence.backlashAdjustment()
                     obj.DriverInitialization.Value = true;
                 end
@@ -502,8 +506,8 @@ classdef UserInterface < handle
         end
 
         function ConnectCounterClick(obj,src,event)
-            if obj.ConfirmPowerDown.Value && obj.ConfirmConnections.Value && obj.DriverInitialization.Value && obj.TurnOnCounter.Value && obj.ConfirmCounterAddress.Value
-                if obj.photoluminescence.ConnectCounter(obj.CounterBoardIndex.Value,obj.CounterPrimaryAddress.Value)
+            if obj.ConfirmPowerDown.Value && obj.ConfirmConnections.Value && obj.TurnOnCounter.Value && obj.ConfirmCounterAddress.Value
+                if obj.photoluminescence.connectCounter(obj.CounterBoardIndex.Value,obj.CounterPrimaryAddress.Value)
                     obj.CounterStatus.Color = 'green';
                     obj.CounterInitialization.Value = true;
                 end

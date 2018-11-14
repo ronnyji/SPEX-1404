@@ -19,7 +19,7 @@ classdef Photoluminescence < handle
             success = obj.driver.backlashAdjustment();
         end
 
-        function setInitialPoisition(obj,position)
+        function setInitialPosition(obj,position)
             obj.driver.setCurrentPosition(position);
         end
 
